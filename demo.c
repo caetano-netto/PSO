@@ -8,6 +8,10 @@
 #include <windows.h>
 #endif
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // ============================
 //   CORES ANSI (Terminal)
 // ============================
@@ -53,6 +57,7 @@ static void pause_enter(void) {
 static const int W = 62; // largura total da caixa (inclui + e |)
 
 static void box_border(char left, char mid, char right, char fill) {
+    (void)mid;
     putchar(left);
     for (int i = 0; i < W - 2; i++) putchar(fill);
     putchar(right);
@@ -87,6 +92,64 @@ static void box_line_color(const char *color, const char *text) {
 
 static void box_blank(void) {
     box_line_plain("");
+}
+
+// ============================
+//   IMPRESSÃO DO GBEST COMPLETO
+//   (quebra em várias linhas dentro da caixa)
+// ============================
+static void box_print_gbest_full(const double *gbest, int dim) {
+    // inner = W - 4 (mesmo da box_line_plain)
+    const int inner = W - 4;
+
+    // Imprime título
+    char title[128];
+    snprintf(title, sizeof(title), "gbest (dim=%d):", dim);
+    box_line_plain(title);
+
+    // Vamos montar linhas com segurança sem estourar e sem cortar feio
+    // Cada linha começa com "[" na primeira, e com "  " nas próximas.
+    char line[256];
+    int len = 0;
+
+    // primeira linha: "["
+    line[0] = '\0';
+    len = snprintf(line, sizeof(line), "[");
+
+    for (int i = 0; i < dim; i++) {
+        char piece[64];
+        if (i == 0) snprintf(piece, sizeof(piece), "%.6f", gbest[i]);
+        else        snprintf(piece, sizeof(piece), ", %.6f", gbest[i]);
+
+        int need = (int)strlen(piece);
+
+        // Se não couber, imprime a linha atual e começa outra
+        // Reservamos 1 char para fechar com ']' no fim (na última linha)
+        if (len + need >= inner) {
+            box_line_plain(line);
+
+            // nova linha indentada
+            line[0] = '\0';
+            len = snprintf(line, sizeof(line), "  ");
+        }
+
+        // adiciona a peça com segurança
+        if (len + need < (int)sizeof(line) - 1) {
+            memcpy(line + len, piece, need);
+            len += need;
+            line[len] = '\0';
+        }
+    }
+
+    // fecha o vetor com ']'
+    if (len + 1 >= inner) {
+        box_line_plain(line);
+        strcpy(line, "]");
+    } else {
+        strncat(line, "]", sizeof(line) - strlen(line) - 1);
+    }
+
+    box_line_plain(line);
 }
 
 // ============================
@@ -158,7 +221,6 @@ static void menu_box(void) {
     box_line_plain("MENU PRINCIPAL");
     box_border('+','-','+','-');
 
-    // opções (sem quebrar borda: texto simples dentro)
     box_line_plain("1 - Sphere     (Esfera - simples)");
     box_line_plain("2 - Rosenbrock (Vale estreito)");
     box_line_plain("3 - Griewank   (Muitos minimos locais)");
@@ -291,11 +353,11 @@ int main(void) {
         double lo = -100, hi = 100;
 
         switch (op) {
-            case 1: obj = pso_sphere;    fname = "Sphere (Esfera)";     lo=-100;   hi=100;   break;
-            case 2: obj = pso_rosenbrock;fname = "Rosenbrock";          lo=-2.048; hi=2.048; break;
-            case 3: obj = pso_griewank;  fname = "Griewank";            lo=-600;   hi=600;   break;
-            case 4: obj = pso_rastrigin; fname = "Rastrigin";           lo=-5.12;  hi=5.12;  break;
-            case 5: obj = pso_ackley;    fname = "Ackley";              lo=-32.0;  hi=32.0;  break;
+            case 1: obj = pso_sphere;     fname = "Sphere (Esfera)";     lo=-100;   hi=100;   break;
+            case 2: obj = pso_rosenbrock; fname = "Rosenbrock";          lo=-2.048; hi=2.048; break;
+            case 3: obj = pso_griewank;   fname = "Griewank";            lo=-600;   hi=600;   break;
+            case 4: obj = pso_rastrigin;  fname = "Rastrigin";           lo=-5.12;  hi=5.12;  break;
+            case 5: obj = pso_ackley;     fname = "Ackley";              lo=-32.0;  hi=32.0;  break;
             default:
                 printf(C_RED "\nOpcao invalida.\n" C_RESET);
                 pause_enter();
@@ -324,7 +386,7 @@ int main(void) {
 
         // Resultado
         pso_result_t result;
-        result.gbest = (double*)malloc(dim*sizeof(double));
+        result.gbest = (double*)malloc((size_t)dim * sizeof(double));
         if (!result.gbest) {
             printf(C_RED "Falha ao alocar memoria.\n" C_RESET);
             pso_settings_free(settings);
@@ -343,29 +405,21 @@ int main(void) {
                clamp? "CLAMP":"PERIODICO",
                c1, c2);
 
-        // Rodar PSO
+        // Rodar PSO (a biblioteca já encontra o melhor global e salva em result)
         pso_solve(obj, NULL, &result, settings);
 
-        // Resultado final (em caixa alinhada)
+        // Resultado final (em caixa alinhada) - MOSTRA GBEST COMPLETO
         box_border('+','-','+','-');
-        box_line_plain("RESULTADO");
+        box_line_plain("RESULTADO (melhor solucao global)");
         box_border('+','-','+','-');
 
         char linebuf[256];
         snprintf(linebuf, sizeof(linebuf), "Best error : %.12e", result.error);
         box_line_plain(linebuf);
 
-        int show = dim < 10 ? dim : 10;
-        // monta gbest curto
-        char gbuf[512];
-        int off = snprintf(gbuf, sizeof(gbuf), "gbest[%d] : [", show);
-        for (int i=0;i<show && off < (int)sizeof(gbuf)-32;i++) {
-            off += snprintf(gbuf+off, sizeof(gbuf)-off, "%s%.6f", i?", ":"", result.gbest[i]);
-        }
-        if (dim > show) snprintf(gbuf+off, sizeof(gbuf)-off, ", ...]");
-        else snprintf(gbuf+off, sizeof(gbuf)-off, "]");
+        // imprime gbest completo, quebrando em linhas
+        box_print_gbest_full(result.gbest, dim);
 
-        box_line_plain(gbuf);
         box_border('+','-','+','-');
 
         free(result.gbest);

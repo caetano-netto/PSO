@@ -1,173 +1,158 @@
-/* Implementa√ß√£o do algoritmo Particle Swarm Optimization (PSO)
-
-   Copyright 2010 Kyriakos Kentzoglanakis
-
-   Este programa √© software livre: voc√™ pode redistribu√≠-lo e/ou
-   modific√°-lo sob os termos da GNU General Public License vers√£o 3,
-   publicada pela Free Software Foundation.
-
-   Este programa √© distribu√≠do na esperan√ßa de ser √∫til, mas SEM
-   QUALQUER GARANTIA; sem mesmo a garantia impl√≠cita de COMERCIALIZA√á√ÉO
-   ou ADEQUA√á√ÉO A UM PROP√ìSITO ESPEC√çFICO. Veja a GNU GPL para mais detalhes.
-
-   Voc√™ deve ter recebido uma c√≥pia da GNU GPL junto com este programa.
-   Se n√£o, veja <http://www.gnu.org/licenses/>.
+/* ImplementaÁ„o do algoritmo Particle Swarm Optimization (PSO)
 */
 
 #ifndef PSO_H_
 #define PSO_H_
 
-// =============================================================
-//                     CONSTANTES GERAIS
-// =============================================================
 
-// Tamanho m√°ximo permitido para o enxame (swarm)
-// (limite de seguran√ßa para evitar aloca√ß√µes muito grandes)
+//                     CONSTANTES GERAIS
+
+
+// Tamanho m·ximo permitido para o enxame (swarm)
+// (limite de seguranÁa para evitar alocaÁıes muito grandes)
 #define PSO_MAX_SIZE 100
 
-// Valor padr√£o da in√©rcia (w) sugerido na literatura
-// (refer√™ncia: Clerc 2002 / constriction factor)
+// Valor padr„o da inÈrcia (w) sugerido na literatura
+// (referÍncia: Clerc 2002 / constriction factor)
 #define PSO_INERTIA 0.7298
 
 
-// =============================================================
-//                 ESQUEMAS DE VIZINHAN√áA (NHOOD)
-// =============================================================
+//                 ESQUEMAS DE VIZINHAN«A (NHOOD)
+
 
 // 0) Topologia GLOBAL:
-// todas as part√≠culas usam o melhor global (gbest) como refer√™ncia.
-// Converge r√°pido, mas pode ter converg√™ncia prematura.
+// todas as partÌculas usam o melhor global (gbest) como referÍncia.
+// Converge r·pido, mas pode ter convergÍncia prematura.
 #define PSO_NHOOD_GLOBAL 0
 
 // 1) Topologia RING (anel):
-// cada part√≠cula se comunica com poucos vizinhos (esquerda/direita).
+// cada partÌcula se comunica com poucos vizinhos (esquerda/direita).
 // Ajuda a manter diversidade e evita travar cedo.
 #define PSO_NHOOD_RING 1
 
-// 2) Topologia RANDOM (aleat√≥ria):
+// 2) Topologia RANDOM (aleatÛria):
 // os informantes mudam ao longo do tempo (dependendo de melhora).
-// Pode aumentar a explora√ß√£o do espa√ßo.
-// Refer√™ncia: http://clerc.maurice.free.fr/pso/random_topology.pdf
+// Pode aumentar a exploraÁ„o do espaÁo.
+// ReferÍncia: http://clerc.maurice.free.fr/pso/random_topology.pdf
 #define PSO_NHOOD_RANDOM 2
 
 
-// =============================================================
-//           ESTRAT√âGIAS DE ATUALIZA√á√ÉO DA IN√âRCIA (w)
-// =============================================================
 
-// 0) In√©rcia constante (w fixo)
+//           ESTRAT…GIAS DE ATUALIZA«√O DA IN…RCIA (w)
+
+
+// 0) InÈrcia constante (w fixo)
 #define PSO_W_CONST 0
 
-// 1) In√©rcia decrescente linear (w cai de w_max para w_min)
+// 1) InÈrcia decrescente linear (w cai de w_max para w_min)
 #define PSO_W_LIN_DEC 1
 
 
-// =============================================================
 //              ESTRUTURA DE RESULTADO DO PSO
-// =============================================================
-// OBS: Esta estrutura deve ser preparada pelo usu√°rio antes de chamar pso_solve().
+
+// Esta estrutura deve ser preparada pelo usu·rio antes de chamar pso_solve().
 // O ponteiro gbest deve ser alocado com DIM elementos.
 typedef struct {
 
-    // Melhor erro (valor m√≠nimo da fun√ß√£o objetivo encontrado)
+    // Melhor erro (valor mÌnimo da funÁ„o objetivo encontrado)
     double error;
 
-    // Melhor posi√ß√£o global encontrada (gbest)
+    // Melhor posiÁ„o global encontrada (gbest)
     // Deve ter exatamente DIM elementos
     double *gbest;
 
 } pso_result_t;
 
 
-// =============================================================
-//              TIPO DA FUN√á√ÉO OBJETIVO (OBJ FUN)
-// =============================================================
-// A fun√ß√£o objetivo recebe:
-// - ponteiro para vetor de posi√ß√£o (double *x)
-// - dimens√£o do problema (int dim)
-// - ponteiro gen√©rico para par√¢metros extras (void *params)
+
+//              TIPO DA FUN«√O OBJETIVO (OBJ FUN)
+
+// A funÁ„o objetivo recebe:
+// - ponteiro para vetor de posiÁ„o (double *x)
+// - dimens„o do problema (int dim)
+// - ponteiro genÈrico para par‚metros extras (void *params)
 // E retorna um double: o valor de erro/fitness (quanto menor, melhor).
 typedef double (*pso_obj_fun_t)(double *, int, void *);
 
 
-// =============================================================
-//                ESTRUTURA DE CONFIGURA√á√ÉO DO PSO
-// =============================================================
+
+//                ESTRUTURA DE CONFIGURA«√O
+
 typedef struct {
 
-    // Dimens√£o do problema (n√∫mero de vari√°veis)
+    // Dimens„o do problema (n˙mero de vari·veis)
     int dim;
 
-    // Limites inferiores e superiores por dimens√£o (arrays de tamanho DIM)
+    // Limites inferiores e superiores por dimens„o (arrays de tamanho DIM)
     double *range_lo; // limite inferior
     double *range_hi; // limite superior
 
     // Objetivo de parada (se erro <= goal, o PSO para)
     double goal;
 
-    // Tamanho do enxame (n√∫mero de part√≠culas)
+    // Tamanho do enxame (n˙mero de partÌculas)
     int size;
 
-    // Frequ√™ncia de impress√£o (a cada N passos)
-    // Se 0, n√£o imprime nada durante a execu√ß√£o
+    // FrequÍncia de impress„o (a cada N passos)
+    // Se 0, n„o imprime nada durante a execuÁ„o
     int print_every;
 
-    // N√∫mero m√°ximo de itera√ß√µes
+    // N˙mero m·ximo de iteraÁıes
     int steps;
 
     // Passo atual (a biblioteca atualiza isso internamente)
     int step;
 
     // Coeficientes do PSO:
-    // c1 = componente cognitiva (tend√™ncia a voltar ao pbest)
-    // c2 = componente social (tend√™ncia a ir ao gbest ou melhor vizinho)
+    // c1 = componente cognitiva (tendÍncia a voltar ao pbest)
+    // c2 = componente social (tendÍncia a ir ao gbest ou melhor vizinho)
     double c1;
     double c2;
 
-    // Par√¢metros de in√©rcia:
-    // w_max e w_min s√£o usados quando a estrat√©gia √© linear decrescente
+    // Par‚metros de inÈrcia:
+    // w_max e w_min s„o usados quando a estratÈgia È linear decrescente
     double w_max;
     double w_min;
 
     // Controle de limites:
-    // clamp_pos = 1 ‚Üí trava nas bordas (CLAMP) e zera velocidade na dimens√£o
-    // clamp_pos = 0 ‚Üí condi√ß√£o peri√≥dica (quando sai, "d√° a volta")
+    // clamp_pos = 1: trava nas bordas (CLAMP) e zera velocidade na dimens„o
+    // clamp_pos = 0: condiÁ„o periÛdica (quando sai, "d· a volta")
     int clamp_pos;
 
-    // Estrat√©gia de vizinhan√ßa:
+    // EstratÈgia de vizinhanÁa:
     // PSO_NHOOD_GLOBAL, PSO_NHOOD_RING ou PSO_NHOOD_RANDOM
     int nhood_strategy;
 
-    // Tamanho m√©dio da vizinhan√ßa (usado em RANDOM / e pode ser usado em outras)
+    // Tamanho mÈdio da vizinhanÁa (usado em RANDOM / e pode ser usado em outras)
     int nhood_size;
 
-    // Estrat√©gia de in√©rcia:
+    // EstratÈgia de inÈrcia:
     // PSO_W_CONST ou PSO_W_LIN_DEC
     int w_strategy;
 
 } pso_settings_t;
 
 
-// =============================================================
-//                  FUN√á√ïES P√öBLICAS DA BIBLIOTECA
-// =============================================================
 
-// Cria e inicializa a estrutura de configura√ß√µes do PSO
-// dim: dimens√£o do problema
-// range_lo / range_hi: limites inferiores/superiores (mesmo valor para todas as dimens√µes)
+//                  FUN«’ES P⁄BLICAS DA BIBLIOTECA
+
+
+// Cria e inicializa a estrutura de configuraÁıes
+// dim: dimens„o do problema
+// range_lo / range_hi: limites inferiores/superiores (mesmo valor para todas as dimensıes)
 pso_settings_t *pso_settings_new(int dim, double range_lo, double range_hi);
 
-// Libera a mem√≥ria da estrutura de configura√ß√µes
+// Libera a memÛria da estrutura de configuraÁıes
 void pso_settings_free(pso_settings_t *settings);
 
-// Retorna um tamanho de enxame sugerido com base na dimens√£o
+// Retorna um tamanho de enxame sugerido com base na dimens„o
 int pso_calc_swarm_size(int dim);
 
-// Executa o PSO para minimizar a fun√ß√£o objetivo obj_fun
-// - obj_fun: fun√ß√£o a ser minimizada
-// - obj_fun_params: par√¢metros extras (pode ser NULL)
+// Executa o PSO para minimizar a funÁ„o objetivo obj_fun
+// - obj_fun: funÁ„o a ser minimizada
+// - obj_fun_params: par‚metros extras (pode ser NULL)
 // - solution: onde o PSO escreve o melhor resultado (gbest e error)
-// - settings: par√¢metros do PSO
+// - settings: par‚metros do PSO
 void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
                pso_result_t *solution, pso_settings_t *settings);
 

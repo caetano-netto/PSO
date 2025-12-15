@@ -1,17 +1,4 @@
-/* Implementa√ß√£o do algoritmo Particle Swarm Optimization (PSO)
-
-   Copyright 2010 Kyriakos Kentzoglanakis
-
-   Este programa √© software livre: voc√™ pode redistribu√≠-lo e/ou
-   modific√°-lo sob os termos da GNU General Public License vers√£o 3
-   publicada pela Free Software Foundation.
-
-   Este programa √© distribu√≠do na esperan√ßa de ser √∫til, mas SEM
-   QUALQUER GARANTIA; sem mesmo a garantia impl√≠cita de COMERCIALIZA√á√ÉO
-   ou ADEQUA√á√ÉO A UM PROP√ìSITO ESPEC√çFICO. Veja a GNU GPL para mais detalhes.
-
-   Voc√™ deve ter recebido uma c√≥pia da GNU GPL junto com este programa.
-   Se n√£o, veja <http://www.gnu.org/licenses/>.
+/* ImplementaÁ„o do algoritmo Particle Swarm Optimization (PSO)
 */
 
 #include <stdlib.h>   // rand(), malloc(), free()
@@ -23,25 +10,20 @@
 
 #include "pso.h"
 
-// ==============================================================
-//  Sa√≠da "gr√°fica" no terminal (barra de progresso)
-//  - Mant√©m compatibilidade: n√£o muda a API.
-//  - Quando settings->print_every > 0, imprime uma barra atualizando
-//    na mesma linha (evita poluir o terminal com muitas linhas).
-//  - Funciona em Windows Terminal/PowerShell e tamb√©m em Linux/macOS.
-// ==============================================================
+
+//  SaÌda "gr·fica" no terminal (barra de progresso)
 static void pso_print_progress_bar(int step, int steps, double w, double best_err) {
     const int bar_width = 28;
     double frac = 0.0;
 
-    // fra√ß√£o de progresso entre 0 e 1
+    // fraÁ„o de progresso entre 0 e 1
     if (steps > 0) frac = (double)step / (double)steps;
     if (frac < 0.0) frac = 0.0;
     if (frac > 1.0) frac = 1.0;
 
     int filled = (int)(frac * bar_width);
 
-    // \r volta para o in√≠cio da linha; n√£o imprime \n (atualiza a linha atual)
+    // \r volta para o inÌcio da linha
     printf("\r[");
     for (int i = 0; i < bar_width; i++) {
         putchar(i < filled ? '#' : '-');
@@ -51,9 +33,9 @@ static void pso_print_progress_bar(int step, int steps, double w, double best_er
     fflush(stdout);
 }
 
-// =============================================================
-// Macros de n√∫meros aleat√≥rios
-// =============================================================
+
+// Macros de n˙meros aleatÛrios
+
 
 // gera um double no intervalo (0, 1)
 #define RNG_UNIFORM() (rand()/(double)RAND_MAX)
@@ -61,30 +43,29 @@ static void pso_print_progress_bar(int step, int steps, double w, double best_er
 // gera um inteiro no intervalo [0, s)
 #define RNG_UNIFORM_INT(s) (rand()%s)
 
-// tipo de fun√ß√£o para as diferentes estrat√©gias de vizinhan√ßa (informa√ß√£o)
+// tipo de funÁ„o para as diferentes estratatÈgias de vizinhanÁa
 typedef void (*inform_fun_t)(int *comm, double **pos_nb,
                              double **pos_b, double *fit_b,
                              double *gbest, int improved,
                              pso_settings_t *settings);
 
-// tipo de fun√ß√£o para as diferentes estrat√©gias de in√©rcia
+// tipo de funÁ„o para as diferentes estratÈgias de inÈrcia
 typedef double (*inertia_fun_t)(int step, pso_settings_t *settings);
 
-//==============================================================
+
 // Calcula tamanho do enxame com base na dimensionalidade
-// (heur√≠stica comum: 10 + 2*sqrt(dim))
+// (heurÌstica comum: 10 + 2*sqrt(dim))
 int pso_calc_swarm_size(int dim) {
     int size = 10. + 2. * sqrt(dim);
     return (size > PSO_MAX_SIZE ? PSO_MAX_SIZE : size);
 }
 
-//==============================================================
-//         ESTRAT√âGIAS DE ATUALIZA√á√ÉO DA IN√âRCIA (w)
-//==============================================================
 
-// In√©rcia decrescente linear:
-// - come√ßa em w_max e vai caindo at√© w_min
-// - normalmente ajuda a explorar no in√≠cio e refinar no final
+//         ESTRAT…GIAS DE ATUALIZA«√O DA IN…RCIA (w)
+
+// InÈrcia decrescente linear:
+// comeÁa em w_max e vai caindo atÈ w_min
+// normalmente ajuda a explorar no inÌcio e refinar no final
 double calc_inertia_lin_dec(int step, pso_settings_t *settings) {
 
     // fase de decaimento (3/4 do total de steps)
@@ -97,12 +78,12 @@ double calc_inertia_lin_dec(int step, pso_settings_t *settings) {
         return settings->w_min;
 }
 
-//==============================================================
-//      ESTRAT√âGIAS DE VIZINHAN√áA (MATRIZ COMM)
-//==============================================================
 
-// Vizinhan√ßa GLOBAL:
-// todas as part√≠culas s√£o informadas pelo melhor global (gbest)
+//      ESTRAT…GIAS DE VIZINHAN«A (MATRIZ COMM)
+
+
+// VizinhanÁa GLOBAL:
+// todas as partÌculas s„o informadas pelo melhor global (gbest)
 void inform_global(int *comm, double **pos_nb,
                    double **pos_b, double *fit_b,
                    double *gbest, int improved,
@@ -115,20 +96,20 @@ void inform_global(int *comm, double **pos_nb,
                 sizeof(double) * settings->dim);
 }
 
-// ---------------------------------------------------------------
-// Fun√ß√£o geral "inform":
+
+// FunÁ„o geral "inform":
 // Dada a matriz COMM (conectividade), encontra o melhor "informante"
-// para cada part√≠cula e copia a posi√ß√£o pbest do melhor vizinho para pos_nb.
-// pos_nb[j] = melhor posi√ß√£o encontrada entre os vizinhos de j
-// ---------------------------------------------------------------
+// para cada partÌcula e copia a posiÁ„o pbest do melhor vizinho para pos_nb.
+// pos_nb[j] = melhor posiÁ„o encontrada entre os vizinhos de j
+
 void inform(int *comm, double **pos_nb, double **pos_b, double *fit_b,
             int improved, pso_settings_t * settings)
 {
     (void)improved;
     int i, j;
-    int b_n; // √≠ndice do melhor vizinho em termos de fitness
+    int b_n; 
 
-    // para cada part√≠cula j
+    // para cada partÌcula j
     for (j=0; j<settings->size; j++) {
         b_n = j; // inicialmente, considera ela mesma como melhor
         // procura qual vizinho (informante) tem menor erro
@@ -144,34 +125,34 @@ void inform(int *comm, double **pos_nb, double **pos_b, double *fit_b,
     }
 }
 
-// ============================
+
 // Topologia RING (anel)
-// ============================
+
 
 // Inicializa a matriz COMM para topologia em anel (fixa):
-// cada part√≠cula se conecta com ela mesma + vizinho da esquerda + vizinho da direita
+// cada partÌcula se conecta com ela mesma + vizinho da esquerda + vizinho da direita
 void init_comm_ring(int *comm, pso_settings_t * settings) {
     // zera a matriz de conectividade
     memset((void *)comm, 0, sizeof(int)*settings->size*settings->size);
 
     for (int i=0; i<settings->size; i++) {
-        // cada part√≠cula informa a si mesma
+        // cada partÌcula informa a si mesma
         comm[i*settings->size+i] = 1;
 
         if (i==0) {
-            // vizinho √† direita
+            // vizinho ‡† direita
             comm[i*settings->size+i+1] = 1;
-            // vizinho √† esquerda (√∫ltimo da lista)
+            // vizinho ‡† esquerda (˙ltimo da lista)
             comm[(i+1)*settings->size-1] = 1;
         } else if (i==settings->size-1) {
-            // vizinho √† direita (primeiro da lista)
+            // vizinho ‡† direita (primeiro da lista)
             comm[i*settings->size] = 1;
-            // vizinho √† esquerda
+            // vizinho ‡† esquerda
             comm[i*settings->size+i-1] = 1;
         } else {
-            // vizinho √† direita
+            // vizinho ‡† direita
             comm[i*settings->size+i+1] = 1;
-            // vizinho √† esquerda
+            // vizinho ‡† esquerda
             comm[i*settings->size+i-1] = 1;
         }
     }
@@ -187,24 +168,24 @@ void inform_ring(int *comm, double **pos_nb,
     inform(comm, pos_nb, pos_b, fit_b, improved, settings);
 }
 
-// ============================
-// Topologia RANDOM (aleat√≥ria)
-// ============================
 
-// Inicializa COMM de forma aleat√≥ria:
-// em m√©dia, cada part√≠cula escolhe nhood_size informantes
+// Topologia RANDOM (aleatÛria)
+
+
+// Inicializa COMM de forma aleatÛria:
+// em mÈdia, cada partÌcula escolhe nhood_size informantes
 void init_comm_random(int *comm, pso_settings_t * settings) {
     // zera a matriz
     memset((void *)comm, 0, sizeof(int)*settings->size*settings->size);
 
     for (int i=0; i<settings->size; i++) {
-        // cada part√≠cula informa a si mesma
+        // cada partÌcula informa a si mesma
         comm[i*settings->size + i] = 1;
 
-        // escolhe informantes aleat√≥rios
+        // escolhe informantes aleatÛrios
         for (int k=0; k<settings->nhood_size; k++) {
             int j = RNG_UNIFORM_INT(settings->size);
-            // part√≠cula i informa part√≠cula j
+            // partÌcula i informa partÌcula j
             comm[i*settings->size + j] = 1;
         }
     }
@@ -217,20 +198,20 @@ void inform_random(int *comm, double **pos_nb,
 {
     (void)gbest;
 
-    // Se n√£o houve melhora, muda (regenera) a vizinhan√ßa aleat√≥ria
+    // Se n„o houve melhora, muda a vizinhanÁa aleatÛria
     if (!improved)
         init_comm_random(comm, settings);
 
     inform(comm, pos_nb, pos_b, fit_b, improved, settings);
 }
 
-//==============================================================
-// Cria configura√ß√µes padr√£o do PSO
+
+// Cria configuraÁıes padr„o do PSO
 pso_settings_t *pso_settings_new(int dim, double range_lo, double range_hi) {
     pso_settings_t *settings = (pso_settings_t *)malloc(sizeof(pso_settings_t));
     if (settings == NULL) { return NULL; }
 
-    // valores padr√£o
+    // valores padr„o
     settings->dim = dim;
     settings->goal = 1e-5;
 
@@ -246,7 +227,7 @@ pso_settings_t *pso_settings_new(int dim, double range_lo, double range_hi) {
         settings->range_hi[i] = range_hi;
     }
 
-    // defaults cl√°ssicos
+    // defaults cl·ssicos
     settings->size = pso_calc_swarm_size(settings->dim);
     settings->print_every = 1000;
     settings->steps = 100000;
@@ -263,15 +244,15 @@ pso_settings_t *pso_settings_new(int dim, double range_lo, double range_hi) {
     return settings;
 }
 
-// Libera configura√ß√µes do PSO
+// Libera configuraÁıes do PSO
 void pso_settings_free(pso_settings_t *settings) {
     free(settings->range_lo);
     free(settings->range_hi);
     free(settings);
 }
 
-//==============================================================
-// Fun√ß√µes auxiliares: cria√ß√£o/libera√ß√£o de matrizes
+
+// FunÁıes auxiliares: criaÁ„o/liberaÁ„o de matrizes
 double **pso_matrix_new(int size, int dim) {
     double **m = (double **)malloc(size * sizeof(double *));
     for (int i=0; i<size; i++) {
@@ -287,50 +268,50 @@ void pso_matrix_free(double **m, int size) {
     free(m);
 }
 
-//==============================================================
-//                 ALGORITMO PSO (PRINCIPAL)
-//==============================================================
+
+//                 ALGORITMO PRINCIPAL
+
 void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
                pso_result_t *solution, pso_settings_t *settings)
 {
-    // ---------------------------
-    // Estruturas das part√≠culas
-    // ---------------------------
-    // pos   : posi√ß√µes atuais
+
+    // Estruturas das partÌcula
+
+    // pos   : posiÁıes atuais
     // vel   : velocidades atuais
-    // pos_b : melhor posi√ß√£o (pbest) de cada part√≠cula
+    // pos_b : melhor posiÁ„o (pbest) de cada partÌcula
     double **pos   = pso_matrix_new(settings->size, settings->dim);
     double **vel   = pso_matrix_new(settings->size, settings->dim);
     double **pos_b = pso_matrix_new(settings->size, settings->dim);
 
-    // fit   : fitness (erro) atual de cada part√≠cula
-    // fit_b : melhor fitness (erro) de cada part√≠cula (pbest)
+    // fit   : fitness (erro) atual de cada partÌcula
+    // fit_b : melhor fitness (erro) de cada partÌcula (pbest)
     double *fit   = (double *)malloc(settings->size * sizeof(double));
     double *fit_b = (double *)malloc(settings->size * sizeof(double));
 
-    // pos_nb : melhor posi√ß√£o informada (melhor dos vizinhos) para cada part√≠cula
+    // pos_nb : melhor posiÁ„o informada (melhor dos vizinhos) para cada partÌcula
     double **pos_nb = pso_matrix_new(settings->size, settings->dim);
 
     // comm : matriz de conectividade (quem informa quem)
     int *comm = (int *)malloc(settings->size * settings->size * sizeof(int));
 
-    // improved indica se o gbest melhorou na √∫ltima itera√ß√£o
+    // improved indica se o gbest melhorou na ˙lltima iteraÁ„o
     int improved = 0;
 
     int i, d, step;
-    double a, b;       // usados na inicializa√ß√£o (posi√ß√£o/velocidade)
-    double rho1, rho2; // coeficientes aleat√≥rios
-    double w = PSO_INERTIA; // in√©rcia atual
+    double a, b;       // usados na inicializaÁ„o (posiÁ„o/velocidade)
+    double rho1, rho2; // coeficientes aleatÛrios
+    double w = PSO_INERTIA; // inÈrcia atual
 
-    inform_fun_t  inform_fun = NULL;     // fun√ß√£o de vizinhan√ßa
-    inertia_fun_t calc_inertia_fun = NULL; // fun√ß√£o de in√©rcia
+    inform_fun_t  inform_fun = NULL;     // funÁ„o de vizinhanÁa
+    inertia_fun_t calc_inertia_fun = NULL; // funÁ„o de inÈrcia
 
-    // semente aleat√≥ria
+    // semente aleatÛria
     srand(time(NULL));
 
-    // ---------------------------
-    // Escolhe a estrat√©gia de vizinhan√ßa
-    // ---------------------------
+
+    // Escolhe a estratÈgia de vizinhanÁa
+
     switch (settings->nhood_strategy) {
         case PSO_NHOOD_GLOBAL:
             inform_fun = inform_global;
@@ -348,38 +329,38 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
             break;
     }
 
-    // ---------------------------
-    // Escolhe a estrat√©gia de in√©rcia
-    // ---------------------------
+
+    // Escolhe a estratÈgia de inÈrcia
+
     switch (settings->w_strategy) {
         case PSO_W_LIN_DEC:
             calc_inertia_fun = calc_inertia_lin_dec;
             break;
         default:
-            // se n√£o definido, fica como constante (w = PSO_INERTIA)
+            // se n„o definido, fica como constante (w = PSO_INERTIA)
             calc_inertia_fun = NULL;
             break;
     }
 
-    // Inicializa solu√ß√£o (gbest)
+    // Inicializa soluÁ„o (gbest)
     solution->error = DBL_MAX;
 
-    // ---------------------------
-    // Inicializa√ß√£o do enxame
-    // ---------------------------
+
+    // InicializaÁ„o do enxame
+
     for (i=0; i<settings->size; i++) {
         for (d=0; d<settings->dim; d++) {
             // sorteia dois valores no intervalo [range_lo, range_hi]
             a = settings->range_lo[d] + (settings->range_hi[d] - settings->range_lo[d]) * RNG_UNIFORM();
             b = settings->range_lo[d] + (settings->range_hi[d] - settings->range_lo[d]) * RNG_UNIFORM();
 
-            // posi√ß√£o inicial
+            // posiÁ„o inicial
             pos[i][d] = a;
 
-            // pbest come√ßa igual √† posi√ß√£o inicial
+            // pbest comeÁa igual ‡† posiÁ„o inicial
             pos_b[i][d] = a;
 
-            // velocidade inicial (diferen√ßa entre dois pontos / 2)
+            // velocidade inicial (diferenÁa entre dois pontos / 2)
             vel[i][d] = (a-b) / 2.0;
         }
 
@@ -387,7 +368,7 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
         fit[i] = obj_fun(pos[i], settings->dim, obj_fun_params);
         fit_b[i] = fit[i];
 
-        // atualiza gbest se necess√°rio
+        // atualiza gbest se necess·rio
         if (fit[i] < solution->error) {
             solution->error = fit[i];
             memmove((void *)solution->gbest, (void *)pos[i],
@@ -395,21 +376,21 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
         }
     }
 
-    // ---------------------------
-    // Loop principal do PSO
-    // ---------------------------
-    int progress_used = 0; // indica se usamos a barra (para finalizar com \n)
+
+    // Loop principal
+
+    int progress_used = 0; 
 
     for (step=0; step<settings->steps; step++) {
         // registra o passo atual (caso seja usado fora)
         settings->step = step;
 
-        // atualiza in√©rcia (se houver estrat√©gia definida)
+        // atualiza inÈrcia (se houver estratÈgia definida)
         if (calc_inertia_fun != NULL) {
             w = calc_inertia_fun(step, settings);
         }
 
-        // crit√©rio de parada: atingiu o objetivo (goal)
+        // critÈrio de parada: atingiu o objetivo (goal)
         if (solution->error <= settings->goal) {
             if (settings->print_every) {
                 if (progress_used) printf("\n");
@@ -418,28 +399,28 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
             break;
         }
 
-        // encontra o melhor vizinho (pos_nb) para cada part√≠cula
+        // encontra o melhor vizinho (pos_nb) para cada partÌcula
         inform_fun(comm, pos_nb, pos_b, fit_b, solution->gbest, improved, settings);
         improved = 0; // reseta flag
 
-        // atualiza todas as part√≠culas
+        // atualiza todas as partÌculas
         for (i=0; i<settings->size; i++) {
             for (d=0; d<settings->dim; d++) {
-                // coeficientes estoc√°sticos
+                // coeficientes estoc·sticos
                 rho1 = settings->c1 * RNG_UNIFORM();
                 rho2 = settings->c2 * RNG_UNIFORM();
 
-                // atualiza√ß√£o de velocidade (f√≥rmula do PSO)
+                // atualizaÁ„o de velocidade (fÛrmula)
                 vel[i][d] = w * vel[i][d]
                     + rho1 * (pos_b[i][d] - pos[i][d])
                     + rho2 * (pos_nb[i][d] - pos[i][d]);
 
-                // atualiza√ß√£o de posi√ß√£o
+                // atualizaÁ„o de posiÁ„o
                 pos[i][d] += vel[i][d];
 
                 // tratamento de limites
                 if (settings->clamp_pos) {
-                    // CLAMP: trava nas bordas e zera velocidade na dimens√£o
+                    // CLAMP: trava nas bordas e zera velocidade na dimens„o
                     if (pos[i][d] < settings->range_lo[d]) {
                         pos[i][d] = settings->range_lo[d];
                         vel[i][d] = 0;
@@ -448,7 +429,7 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
                         vel[i][d] = 0;
                     }
                 } else {
-                    // PERI√ìDICO: ‚Äúd√° a volta‚Äù quando ultrapassa limites
+                    // PERI”DICO: voltaù quando ultrapassa limites
                     if (pos[i][d] < settings->range_lo[d]) {
                         pos[i][d] = settings->range_hi[d] - fmod(settings->range_lo[d] - pos[i][d],
                                                                  settings->range_hi[d] - settings->range_lo[d]);
@@ -461,7 +442,7 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
                 }
             }
 
-            // avalia fitness na nova posi√ß√£o
+            // avalia fitness na nova posiÁ„o
             fit[i] = obj_fun(pos[i], settings->dim, obj_fun_params);
 
             // atualiza pbest (melhor pessoal)
@@ -487,12 +468,12 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
         }
     }
 
-    // garante que o prompt n√£o fique "colado" na barra
+    // garante que o prompt n„o fique "colado" na barra
     if (progress_used) printf("\n");
 
-    // ---------------------------
-    // Libera mem√≥ria
-    // ---------------------------
+
+    // Libera memÛria
+
     pso_matrix_free(pos, settings->size);
     pso_matrix_free(vel, settings->size);
     pso_matrix_free(pos_b, settings->size);
